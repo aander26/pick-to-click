@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pick to Click 2026 — Tennessee Volunteers</title>
+<style>
+  :root{
+    --orange:#FF8200; --smokey:#58595B; --ink:#1c1c1e; --paper:#faf9f7;
+    --card:#ffffff; --line:#e7e4df; --good:#2e7d32; --bad:#c62828; --muted:#6b6b70;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.45}
+  header{background:var(--smokey);color:#fff;padding:18px 20px;
+    border-bottom:5px solid var(--orange)}
+  header h1{margin:0;font-size:20px;letter-spacing:.3px}
+  header .sub{opacity:.85;font-size:13px;margin-top:2px}
+  .wrap{max-width:860px;margin:0 auto;padding:16px}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}
+  .tabs button{border:1px solid var(--line);background:#fff;padding:9px 14px;border-radius:999px;
+    cursor:pointer;font-size:14px;color:var(--ink)}
+  .tabs button.active{background:var(--orange);border-color:var(--orange);color:#fff;font-weight:600}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+  .card h2{margin:0 0 4px;font-size:17px}
+  .card p.hint{color:var(--muted);font-size:13px;margin:2px 0 14px}
+  label{display:block;font-size:13px;font-weight:600;margin:12px 0 5px}
+  input[type=text],input[type=number],input[type=password],input[type=datetime-local],select{
+    width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:15px;background:#fff}
+  .btn{background:var(--orange);color:#fff;border:none;padding:11px 16px;border-radius:9px;
+    font-size:15px;font-weight:600;cursor:pointer}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.sec{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn.danger{background:var(--bad)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:#f0ede8;color:var(--smokey);margin-left:6px}
+  .pill.o{background:#ffe9d1;color:#a85600}
+  .pill.d{background:#e2edff;color:#245}
+  .pill.fcs{background:#fff3cd;color:#8a6d00}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+  th{font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+  .rank{font-weight:700;color:var(--orange)}
+  .banner{padding:11px 14px;border-radius:10px;font-size:14px;margin-bottom:12px}
+  .banner.warn{background:#fff4e5;border:1px solid #ffd8a8;color:#8a5300}
+  .banner.ok{background:#e7f6e8;border:1px solid #b7e0ba;color:#245c27}
+  .banner.err{background:#fdecea;border:1px solid #f5c2bd;color:#8a2018}
+  .muted{color:var(--muted)}
+  .lock-state{font-size:13px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:620px){.grid2{grid-template-columns:1fr}}
+  .scorebits{font-size:12px;color:var(--muted)}
+  code.k{background:#f0ede8;padding:1px 6px;border-radius:5px}
+  .foot{color:var(--muted);font-size:12px;text-align:center;margin:24px 0}
+  details.adm{margin-top:8px}
+  .statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  @media(max-width:620px){.statgrid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🍊 Pick to Click <span style="opacity:.8">2026</span></h1>
+  <div class="sub">Tennessee Volunteers breakout-player contest</div>
+</header>
+<div id="root"><div class="wrap"><p class="muted">Loading…</p></div></div>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script id="ptc-src" type="text/plain">
+const { useState, useEffect, useMemo } = React;
+
+// ============================================================================
+// CONFIG — these two PUBLIC values are filled in during deploy. The anon key is
+// safe to ship in the browser; row-level security is what protects the data.
+// (Your SECRET service key and ADMIN_KEY never appear here — they live only in
+// Vercel environment variables, used by /api/admin.)
+// ============================================================================
+const CONFIG = {
+  SUPABASE_URL:      "__SUPABASE_URL__",
+  SUPABASE_ANON_KEY: "__SUPABASE_ANON_KEY__",
+};
+const CONFIGURED = !CONFIG.SUPABASE_URL.startsWith("__");
+
+// ---- Embedded player pool (89 pickable players, verified baselines) ----------
+const POOL = /*POOL_JSON*/[{"id":"desean-bishop-rb","num":18,"name":"DeSean Bishop","pos":"RB","cls":"Sr","side":"O","p0":1371.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"braylon-staley-wr","num":14,"name":"Braylon Staley","pos":"WR","cls":"Jr","side":"O","p0":1237.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"mike-matthews-wr","num":4,"name":"Mike Matthews","pos":"WR","cls":"Jr","side":"O","p0":1118.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"ian-duarte-wr","num":81,"name":"Ian Duarte","pos":"WR","cls":"Sr","side":"O","p0":781.0,"school":"Idaho State (FCS)","source":"TRANSFER","fcs":true,"note":"Transfer \u2014 2025 at Idaho State (FCS)"},{"id":"javin-gordon-rb","num":6,"name":"Javin Gordon","pos":"RB","cls":"So","side":"O","p0":669.0,"school":"Tulane","source":"TRANSFER","fcs":false,"note":"Transfer \u2014 2025 at Tulane"},{"id":"ethan-davis-te","num":0,"name":"Ethan Davis","pos":"TE","cls":"Sr","side":"O","p0":382.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"amare-campbell-lb","num":0,"name":"Amare Campbell","pos":"LB","cls":"Sr","side":"D","p0":236.0,"school":"Penn State","source":"TRANSFER","fcs":false,"note":"Transfer \u2014 2025 at Penn State"},{"id":"ty-redmond-db","num":4,"name":"Ty Redmond","pos":"DB","cls":"So","side":"D","p0":233.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"dj-burks-db","num":42,"name":"DJ Burks","pos":"DB","cls":"5th","side":"D","p0":226.0,"school":"Appalachian State","source":"TRANSFER","fcs":false,"note":"Transfer \u2014 2025 at Appalachian State"},{"id":"edrees-farooq-db","num":15,"name":"Edrees Farooq","pos":"DB","cls":"Jr","side":"D","p0":220.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"edwin-spillman-lb","num":13,"name":"Edwin Spillman","pos":"LB","cls":"Jr","side":"D","p0":201.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"jeremiah-telander-lb","num":22,"name":"Jeremiah Telander","pos":"LB","cls":"Sr","side":"D","p0":194.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"arion-carter-lb","num":7,"name":"Arion Carter","pos":"LB","cls":"Sr","side":"D","p0":191.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"daune-morris-rb","num":17,"name":"Daune Morris","pos":"RB","cls":"So","side":"O","p0":147.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"ryan-staub-qb","num":8,"name":"Ryan Staub","pos":"QB","cls":"Sr","side":"O","p0":136.8,"school":"Colorado","source":"TRANSFER","fcs":false,"note":"Transfer \u2014 2025 at Colorado"},{"id":"radarious-jackson-wr","num":3,"name":"Radarious Jackson","pos":"WR","cls":"So","side":"O","p0":135.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"tj-metcalf-db","num":1,"name":"TJ Metcalf","pos":"DB","cls":"Sr","side":"D","p0":127.0,"school":"Michigan","source":"TRANSFER","fcs":false,"note":"Transfer \u2014 2025 at Michigan"},{"id":"qua-moss-db","num":6,"name":"Qua Moss","pos":"DB","cls":"Sr","side":"D","p0":118.0,"school":"Kansas State","source":"TRANSFER","fcs":false,"note":"Transfer \u2014 2025 at Kansas State"},{"id":"kayin-lee-db","num":14,"name":"Kayin Lee","pos":"DB","cls":"Sr","side":"D","p0":111.0,"school":"Auburn","source":"TRANSFER","fcs":false,"note":"Transfer \u2014 2025 at Auburn"},{"id":"jordan-norman-dl","num":33,"name":"Jordan Norman","pos":"DL","cls":"Sr","side":"D","p0":108.0,"school":"South Alabama","source":"TRANSFER","fcs":false,"note":"Transfer \u2014 2025 at South Alabama"},{"id":"daevin-hobbs-dl","num":5,"name":"Daevin Hobbs","pos":"DL","cls":"Sr","side":"D","p0":104.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"dasaahn-brame-te","num":7,"name":"DaSaahn Brame","pos":"TE","cls":"So","side":"O","p0":93.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"tyree-weathersby-dl","num":18,"name":"Tyree Weathersby","pos":"DL","cls":"Sr","side":"D","p0":68.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"trent-thomas-te","num":82,"name":"Trent Thomas","pos":"TE","cls":"Sr","side":"O","p0":54.0,"school":"South Alabama","source":"TRANSFER","fcs":false,"note":"Transfer \u2014 2025 at South Alabama"},{"id":"nathan-robinson-dl","num":19,"name":"Nathan Robinson","pos":"DL","cls":"Sr","side":"D","p0":53.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"jadon-perlotte-lb","num":27,"name":"Jadon Perlotte","pos":"LB","cls":"So","side":"D","p0":51.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"dejuan-lane-db","num":10,"name":"Dejuan Lane","pos":"DB","cls":"Jr","side":"D","p0":48.0,"school":"Penn State","source":"TRANSFER","fcs":false,"note":"Transfer \u2014 2025 at Penn State"},{"id":"joakim-dodson-wr","num":9,"name":"Joakim Dodson","pos":"WR","cls":"So","side":"O","p0":48.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"jaedon-harmon-lb","num":12,"name":"Jaedon Harmon","pos":"LB","cls":"So","side":"D","p0":45.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"travis-smith-jr-wr","num":1,"name":"Travis Smith Jr.","pos":"WR","cls":"So","side":"O","p0":44.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"justin-baker-rb","num":2,"name":"Justin Baker","pos":"RB","cls":"So","side":"O","p0":43.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"xavier-gilliam-dl","num":2,"name":"Xavier Gilliam","pos":"DL","cls":"Jr","side":"D","p0":43.0,"school":"Penn State","source":"TRANSFER","fcs":false,"note":"Transfer \u2014 2025 at Penn State"},{"id":"tre-poteat-iii-db","num":3,"name":"Tre Poteat III","pos":"DB","cls":"So","side":"D","p0":36.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"mariyon-dye-dl","num":9,"name":"Mariyon Dye","pos":"DL","cls":"So","side":"D","p0":32.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"charles-house-iii-dl","num":99,"name":"Charles House III","pos":"DL","cls":"So","side":"D","p0":22.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"cole-harrison-te","num":80,"name":"Cole Harrison","pos":"TE","cls":"Jr","side":"O","p0":22.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"mason-phillips-qb","num":13,"name":"Mason Phillips","pos":"QB","cls":"So","side":"O","p0":18.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"george-macintyre-qb","num":12,"name":"George MacIntyre","pos":"QB","cls":"So","side":"O","p0":17.2,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"jordan-burns-lb","num":11,"name":"Jordan Burns","pos":"LB","cls":"Jr","side":"D","p0":16.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"isaiah-campbell-dl","num":47,"name":"Isaiah Campbell","pos":"DL","cls":"So","side":"D","p0":15.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"ethan-utley-dl","num":17,"name":"Ethan Utley","pos":"DL","cls":"So","side":"D","p0":14.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"sidney-walton-db","num":23,"name":"Sidney Walton","pos":"DB","cls":"So","side":"D","p0":14.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"jadais-richard-db","num":8,"name":"Jadais Richard","pos":"DB","cls":"Sr","side":"D","p0":10.0,"school":"Miami","source":"TRANSFER","fcs":false,"note":"Transfer \u2014 2025 at Miami"},{"id":"carson-gentle-dl","num":35,"name":"Carson Gentle","pos":"DL","cls":"Jr","side":"D","p0":8.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"christian-gass-dl","num":44,"name":"Christian Gass","pos":"DL","cls":"So","side":"D","p0":8.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"tim-merritt-db","num":25,"name":"Tim Merritt","pos":"DB","cls":"So","side":"D","p0":8.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"mike-bethea-ii-dl","num":55,"name":"Mike Bethea II","pos":"DL","cls":"5th","side":"D","p0":6.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"ryan-scott-lb","num":50,"name":"Ryan Scott","pos":"LB","cls":"Jr","side":"D","p0":4.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"dylan-lewis-db","num":24,"name":"Dylan Lewis","pos":"DB","cls":"So","side":"D","p0":2.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"hunter-barnes-rb","num":24,"name":"Hunter Barnes","pos":"RB","cls":"5th","side":"O","p0":2.0,"school":"Tennessee","source":"TN2025","fcs":false,"note":"2025 Tennessee production"},{"id":"tevis-metcalf-db","num":20,"name":"Tevis Metcalf","pos":"DB","cls":"Jr","side":"D","p0":2.0,"school":"Michigan","source":"TRANSFER","fcs":false,"note":"Transfer \u2014 2025 at Michigan"},{"id":"ben-petermann-wr","num":35,"name":"Ben Petermann","pos":"WR","cls":"So","side":"O","p0":0.0,"school":"Tennessee","source":"RETURN_NOSTAT","fcs":false,"note":""},{"id":"brayden-carroll-wr","num":38,"name":"Brayden Carroll","pos":"WR","cls":"Fr","side":"O","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"brayden-rouse-lb","num":28,"name":"Brayden Rouse","pos":"LB","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"breeze-carter-dl","num":95,"name":"Breeze Carter","pos":"DL","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"cj-edwards-dl","num":85,"name":"CJ Edwards","pos":"DL","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"carter-gooden-dl","num":36,"name":"Carter Gooden","pos":"DL","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"darryl-rivers-dl","num":39,"name":"Darryl Rivers","pos":"DL","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"deon-hardin-wr","num":88,"name":"Deon Hardin","pos":"WR","cls":"Sr","side":"O","p0":0.0,"school":"East Central CC (JUCO)","source":"FLOOR","fcs":true,"note":"No 2025 production \u2014 floor baseline"},{"id":"dereon-albert-dl","num":59,"name":"Dereon Albert","pos":"DL","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"doren-sacha-wr","num":26,"name":"Doren Sacha","pos":"WR","cls":"Jr","side":"O","p0":0.0,"school":"Northern Colorado (FCS)","source":"TRANSFER","fcs":true,"note":"Transfer \u2014 2025 at Northern Colorado (FCS)"},{"id":"drake-martinez-te","num":44,"name":"Drake Martinez","pos":"TE","cls":"Sr","side":"O","p0":0.0,"school":"UT Martin (FCS)","source":"TRANSFER","fcs":true,"note":"Transfer \u2014 2025 at UT Martin (FCS)"},{"id":"faizon-brandon-qb","num":11,"name":"Faizon Brandon","pos":"QB","cls":"Fr","side":"O","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"grier-short-lb","num":57,"name":"Grier Short","pos":"LB","cls":"Jr","side":"D","p0":0.0,"school":"Tennessee","source":"RETURN_NOSTAT","fcs":false,"note":""},{"id":"hezekiah-harris-dl","num":97,"name":"Hezekiah Harris","pos":"DL","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"isaiah-hardge-db","num":29,"name":"Isaiah Hardge","pos":"DB","cls":"Sr","side":"D","p0":0.0,"school":"Colorado","source":"TRANSFER","fcs":false,"note":"Transfer \u2014 2025 at Colorado"},{"id":"isaiah-inge-dl","num":96,"name":"Isaiah Inge","pos":"DL","cls":"Jr","side":"D","p0":0.0,"school":"Tennessee","source":"RETURN_NOSTAT","fcs":false,"note":""},{"id":"jj-finch-dl","num":26,"name":"JJ Finch","pos":"DL","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"jacolby-cooper-wr","num":30,"name":"JaColby Cooper","pos":"WR","cls":"Fr","side":"O","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"jack-henry-jakobik-wr","num":29,"name":"Jack-Henry Jakobik","pos":"WR","cls":"Sr","side":"O","p0":0.0,"school":"Tennessee","source":"RETURN_NOSTAT","fcs":false,"note":""},{"id":"jackson-mathews-db","num":43,"name":"Jackson Mathews","pos":"DB","cls":"Jr","side":"D","p0":0.0,"school":"Tennessee","source":"RETURN_NOSTAT","fcs":false,"note":""},{"id":"jamyan-theodore-db","num":21,"name":"Jamyan Theodore","pos":"DB","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"javonte-smith-db","num":30,"name":"Javonte Smith","pos":"DB","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"joel-wyatt-db","num":31,"name":"Joel Wyatt","pos":"DB","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"jowell-combay-db","num":38,"name":"Jowell Combay","pos":"DB","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"kj-mcclain-db","num":40,"name":"KJ McClain","pos":"DB","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"kedric-golston-ii-dl","num":37,"name":"Kedric Golston II","pos":"DL","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"lane-cope-wr","num":31,"name":"Lane Cope","pos":"WR","cls":"Fr","side":"O","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"luca-wolf-te","num":87,"name":"Luca Wolf","pos":"TE","cls":"Fr","side":"O","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"luke-thompson-wr","num":85,"name":"Luke Thompson","pos":"WR","cls":"Fr","side":"O","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"nathan-roberts-wr","num":36,"name":"Nathan Roberts","pos":"WR","cls":"Sr","side":"O","p0":0.0,"school":"Tennessee","source":"RETURN_NOSTAT","fcs":false,"note":""},{"id":"nuk-simmons-dl","num":87,"name":"Nuk Simmons","pos":"DL","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"steele-katina-db","num":41,"name":"Steele Katina","pos":"DB","cls":"Jr","side":"D","p0":0.0,"school":"Tennessee","source":"RETURN_NOSTAT","fcs":false,"note":""},{"id":"tj-white-lb","num":51,"name":"TJ White","pos":"LB","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"tk-keys-wr","num":5,"name":"TK Keys","pos":"WR","cls":"Fr","side":"O","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"tyreek-king-wr","num":19,"name":"Tyreek King","pos":"WR","cls":"Fr","side":"O","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"will-rajecki-rb","num":34,"name":"Will Rajecki","pos":"RB","cls":"Fr","side":"O","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"zach-groves-dl","num":56,"name":"Zach Groves","pos":"DL","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"},{"id":"zay-anderson-db","num":34,"name":"Zay Anderson","pos":"DB","cls":"Fr","side":"D","p0":0.0,"school":"Tennessee","source":"FRESHMAN","fcs":false,"note":"Freshman \u2014 floor baseline"}]/*END_POOL*/;
+const BY_ID = Object.fromEntries(POOL.map(p => [p.id, p]));
+const OFFENSE = POOL.filter(p => p.side === "O").sort((a,b)=>a.name.localeCompare(b.name));
+const DEFENSE = POOL.filter(p => p.side === "D").sort((a,b)=>a.name.localeCompare(b.name));
+
+const db = CONFIGURED ? supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY) : null;
+
+// ---- Production index (identical to the baseline formula, applied to 2026) ---
+function prodIndex(pos, s){
+  if(!s) return 0;
+  const n = k => Number(s[k] || 0);
+  const ry=n('rush_yds'), rey=n('rec_yds'), rtd=n('rush_td'), retd=n('rec_td'), rec=n('rec'),
+        py=n('pass_yds'), ptd=n('pass_td'), pint=n('pass_int'),
+        tk=n('tackles'), tfl=n('tfl'), sk=n('sacks'), it=n('int'), pbu=n('pbu');
+  switch(pos){
+    case 'RB': return ry + rey + 10*(rtd+retd);
+    case 'WR': case 'TE': return rey + 5*rec + 10*retd;
+    case 'QB': return 0.25*py + 20*ptd - 15*pint + ry;
+    case 'DB': return 2*tk + 25*it + 6*pbu;
+    case 'DL': case 'LB': return 2*tk + 4*tfl + 10*sk;
+    default: return 0;
+  }
+}
+function minmax(v, arr){
+  const mn=Math.min(...arr), mx=Math.max(...arr);
+  if(mx===mn) return 50;
+  return 100*(v-mn)/(mx-mn);
+}
+
+// ---- Scoring engine ----------------------------------------------------------
+// Score = 0.5*Improvement + 0.2*LowBaseline + 0.3*Rarity, each normalized 0-100.
+// Normalized within position group when 2+ picked players share a position,
+// else within side. Total = offense pick score + defense pick score.
+function scoreSide(entries, pickKey, liveById, k){
+  const N = entries.length;
+  const picks = entries.map(e => e[pickKey]).filter(Boolean);
+  const distinct = [...new Set(picks)];
+  const counts = {}; picks.forEach(p => counts[p] = (counts[p]||0)+1);
+  const m = {};
+  distinct.forEach(id => {
+    const pl = BY_ID[id]; if(!pl) return;
+    const p0 = pl.p0;
+    const p1 = prodIndex(pl.pos, liveById[id]);
+    m[id] = { pos: pl.pos, p0, p1, imp: (p1 - p0)/(p0 + k), rarityRaw: -Math.log(counts[id]/N) };
+  });
+  const out = {};
+  distinct.forEach(id => {
+    if(!m[id]) return;
+    const pos = m[id].pos;
+    const samePos = distinct.filter(d => m[d] && m[d].pos === pos);
+    const group = samePos.length >= 2 ? samePos : distinct.filter(d=>m[d]);
+    const impN = minmax(m[id].imp, group.map(d => m[d].imp));
+    const rarN = minmax(m[id].rarityRaw, group.map(d => m[d].rarityRaw));
+    const strictlyLess = group.filter(d => m[d].p0 < m[id].p0).length;
+    const lowN = 100 * (1 - strictlyLess/group.length);
+    out[id] = { ...m[id], impN, lowN, rarN, score: 0.5*impN + 0.2*lowN + 0.3*rarN,
+                pickCount: counts[id], N };
+  });
+  return out;
+}
+function buildLeaderboard(entries, liveById, k){
+  const revealed = entries.filter(e => e.offense_player_id && e.defense_player_id);
+  if(!revealed.length) return [];
+  const offN = scoreSide(revealed, 'offense_player_id', liveById, k);
+  const defN = scoreSide(revealed, 'defense_player_id', liveById, k);
+  const board = revealed.map(e => {
+    const o = offN[e.offense_player_id], d = defN[e.defense_player_id];
+    return { name: e.entrant_name, o, d,
+             oScore: o ? o.score : 0, dScore: d ? d.score : 0,
+             total: (o?o.score:0) + (d?d.score:0),
+             oName: e.offense_player_name, dName: e.defense_player_name };
+  });
+  board.sort((a,b) => b.total - a.total);
+  return board;
+}
+
+// ---- Small UI helpers --------------------------------------------------------
+function Pill({p}){
+  return (<span>
+    <span className={"pill "+(p.side==="O"?"o":"d")}>{p.pos}</span>
+    {p.fcs && <span className="pill fcs">FCS/JUCO</span>}
+  </span>);
+}
+function PlayerOption(p){
+  const base = p.p0 === 0 ? "floor" : "P0 " + p.p0;
+  return `#${p.num} ${p.name} · ${p.pos} · ${base}${p.fcs ? " · FCS/JUCO" : ""}`;
+}
+
+// ---- App ---------------------------------------------------------------------
+function App(){
+  const [tab, setTab] = useState("pick");
+  const [settings, setSettings] = useState(null);
+  const [entrants, setEntrants] = useState([]);
+  const [live, setLive] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  async function refresh(){
+    if(!db) { setLoading(false); return; }
+    setErr("");
+    try{
+      const [s, e, l] = await Promise.all([
+        db.from('settings').select('*').eq('id',1).single(),
+        db.from('entrants_public').select('*').order('created_at',{ascending:true}),
+        db.from('live_stats').select('*'),
+      ]);
+      if(s.error) throw s.error;
+      setSettings(s.data);
+      setEntrants(e.data || []);
+      const map = {}; (l.data||[]).forEach(r => map[r.player_id] = r); setLive(map);
+    }catch(ex){ setErr(ex.message || String(ex)); }
+    setLoading(false);
+  }
+  useEffect(()=>{ refresh(); }, []);
+
+  const locked = settings ? settings.submissions_locked : false;
+  const k = settings ? Number(settings.k) : 150;
+  const board = useMemo(()=> buildLeaderboard(entrants, live, k), [entrants, live, k]);
+
+  if(!CONFIGURED){
+    return <div className="wrap"><div className="banner warn">
+      <b>Not configured yet.</b> This is the built app running before deploy. Once we paste your
+      Supabase URL and anon key into the CONFIG block up top, it goes live. Everything else is ready.
+    </div>
+    <div className="card"><h2>What's here</h2>
+      <p className="hint">89 players embedded, scoring engine built, admin wired. Pick / Entrants /
+      Leaderboard / Admin tabs are all present — they just need the database connected.</p></div>
+    </div>;
+  }
+
+  return (
+    <div className="wrap">
+      {err && <div className="banner err">Error: {err}</div>}
+      <div className="lock-state">
+        {locked
+          ? <div className="banner ok">🔒 Submissions are <b>locked</b> — picks are revealed and the leaderboard is live.</div>
+          : <div className="banner warn">🟢 Submissions are <b>open</b>. Picks stay hidden until the deadline{settings && settings.lock_at ? " (" + new Date(settings.lock_at).toLocaleString() + ")" : ""}.</div>}
+      </div>
+
+      <div className="tabs">
+        <button className={tab==="pick"?"active":""} onClick={()=>setTab("pick")}>Make a Pick</button>
+        <button className={tab==="who"?"active":""} onClick={()=>setTab("who")}>Who's In ({entrants.length})</button>
+        <button className={tab==="board"?"active":""} onClick={()=>setTab("board")}>Leaderboard</button>
+        <button className={tab==="rules"?"active":""} onClick={()=>setTab("rules")}>How Scoring Works</button>
+        <button className={tab==="admin"?"active":""} onClick={()=>setTab("admin")}>Admin</button>
+      </div>
+
+      {loading && <p className="muted">Loading…</p>}
+      {!loading && tab==="pick"   && <PickForm locked={locked} onDone={refresh} />}
+      {!loading && tab==="who"    && <WhosIn entrants={entrants} locked={locked} />}
+      {!loading && tab==="board"  && <Board board={board} locked={locked} live={live} />}
+      {!loading && tab==="rules"  && <Rules k={k} />}
+      {!loading && tab==="admin"  && <Admin settings={settings} entrants={entrants} live={live} onDone={refresh} />}
+
+      <div className="foot">Pick to Click 2026 · scoring: 50% improvement / 20% low baseline / 30% rarity · k = {k}</div>
+    </div>
+  );
+}
+
+function PickForm({locked, onDone}){
+  const [name, setName] = useState("");
+  const [off, setOff] = useState("");
+  const [def, setDef] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  if(locked) return <div className="card"><h2>Picks are closed</h2>
+    <p className="hint">The submission window is locked. Head to the Leaderboard to see how everyone's doing.</p></div>;
+
+  async function submit(){
+    setMsg(null);
+    if(!name.trim()) return setMsg({t:"err",m:"Enter your name."});
+    if(!off || !def) return setMsg({t:"err",m:"Pick one offensive and one defensive player."});
+    setBusy(true);
+    const o = BY_ID[off], d = BY_ID[def];
+    const { error } = await db.from('entries').insert({
+      entrant_name: name.trim(),
+      offense_player_id: o.id, offense_player_name: o.name,
+      defense_player_id: d.id, defense_player_name: d.name,
+    });
+    setBusy(false);
+    if(error){
+      if((error.message||"").toLowerCase().includes("duplicate"))
+        setMsg({t:"err",m:"That name already has an entry. Ask the admin to remove it if you need to re-pick."});
+      else setMsg({t:"err",m:error.message});
+      return;
+    }
+    setMsg({t:"ok",m:"You're in! Your pick stays hidden until the deadline."});
+    setName(""); setOff(""); setDef("");
+    onDone();
+  }
+
+  return <div className="card">
+    <h2>Make your pick</h2>
+    <p className="hint">One offensive player + one defensive player you think will break out this season.
+    Lower prior production and fewer people on your pick = more upside.</p>
+    {msg && <div className={"banner "+(msg.t==="ok"?"ok":"err")}>{msg.m}</div>}
+    <label>Your name</label>
+    <input type="text" value={name} maxLength={40} onChange={e=>setName(e.target.value)} placeholder="e.g. Alex" />
+    <div className="grid2">
+      <div>
+        <label>Offensive pick <span className="pill o">O</span></label>
+        <select value={off} onChange={e=>setOff(e.target.value)}>
+          <option value="">— choose —</option>
+          {["QB","RB","WR","TE"].map(pos=>{
+            const grp = OFFENSE.filter(p=>p.pos===pos);
+            return <optgroup key={pos} label={pos}>
+              {grp.map(p=><option key={p.id} value={p.id}>{PlayerOption(p)}</option>)}
+            </optgroup>;
+          })}
+        </select>
+      </div>
+      <div>
+        <label>Defensive pick <span className="pill d">D</span></label>
+        <select value={def} onChange={e=>setDef(e.target.value)}>
+          <option value="">— choose —</option>
+          {["DL","LB","DB"].map(pos=>{
+            const grp = DEFENSE.filter(p=>p.pos===pos);
+            return <optgroup key={pos} label={pos}>
+              {grp.map(p=><option key={p.id} value={p.id}>{PlayerOption(p)}</option>)}
+            </optgroup>;
+          })}
+        </select>
+      </div>
+    </div>
+    <div style={{marginTop:16}}>
+      <button className="btn" disabled={busy} onClick={submit}>{busy?"Submitting…":"Submit my picks"}</button>
+    </div>
+  </div>;
+}
+
+function WhosIn({entrants, locked}){
+  return <div className="card">
+    <h2>Who's in {locked ? "— picks revealed" : "— picks hidden"}</h2>
+    <p className="hint">{locked
+      ? "Submissions are locked, so everyone's picks are shown."
+      : "The roster of entrants is public during the open window, but nobody's actual picks are visible yet."}</p>
+    {!entrants.length && <p className="muted">No entries yet — be the first.</p>}
+    {!!entrants.length && <table>
+      <thead><tr><th>Entrant</th>{locked && <th>Offense</th>}{locked && <th>Defense</th>}</tr></thead>
+      <tbody>
+        {entrants.map(e=><tr key={e.id}>
+          <td>{e.entrant_name}</td>
+          {locked && <td>{e.offense_player_name || "—"}</td>}
+          {locked && <td>{e.defense_player_name || "—"}</td>}
+        </tr>)}
+      </tbody>
+    </table>}
+  </div>;
+}
+
+function Board({board, locked, live}){
+  const hasStats = Object.keys(live).length > 0;
+  if(!locked) return <div className="card"><h2>Leaderboard</h2>
+    <p className="hint">The leaderboard turns on once the admin locks submissions and the first 2026
+    stats are in. Until then, picks stay hidden.</p></div>;
+  if(!board.length) return <div className="card"><h2>Leaderboard</h2>
+    <p className="hint">Locked, but no scored entries yet.</p></div>;
+  return <div className="card">
+    <h2>Leaderboard</h2>
+    <p className="hint">{hasStats ? "Live through the season as stats come in." :
+      "Locked — showing 0s until the first 2026 stats are entered."} Total = offense score + defense score (each 0–100).</p>
+    <table>
+      <thead><tr><th>#</th><th>Entrant</th><th>Offense</th><th>Defense</th><th>Total</th></tr></thead>
+      <tbody>
+        {board.map((r,i)=><tr key={r.name}>
+          <td className="rank">{i+1}</td>
+          <td>{r.name}</td>
+          <td>{r.oName}<div className="scorebits">{r.o?r.o.score.toFixed(1):"0"} pts</div></td>
+          <td>{r.dName}<div className="scorebits">{r.d?r.d.score.toFixed(1):"0"} pts</div></td>
+          <td><b>{r.total.toFixed(1)}</b></td>
+        </tr>)}
+      </tbody>
+    </table>
+  </div>;
+}
+
+function Rules({k}){
+  return <div className="card">
+    <h2>How scoring works</h2>
+    <p className="hint">Every pick earns a 0–100 score from three parts; your total is your offense pick plus your defense pick.</p>
+    <p><b>50% Improvement</b> — how much the player's 2026 production index beats their 2025 baseline,
+       as (P1 − P0) / (P0 + <code className="k">k</code>), where k = {k} smooths out tiny baselines.</p>
+    <p><b>20% Low baseline</b> — reward for picking someone who did little in 2025 (floor players score highest).</p>
+    <p><b>30% Rarity</b> — reward for a contrarian pick; the fewer entrants on your player, the more it's worth.</p>
+    <p className="hint">Each part is normalized against the other picked players — within the same position when
+       two or more of you pick that position, otherwise across the whole side.</p>
+  </div>;
+}
+
+// ---- Admin -------------------------------------------------------------------
+async function callAdmin(adminKey, action, extra){
+  const res = await fetch('/api/admin', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ adminKey, action, ...(extra||{}) })
+  });
+  let data = {}; try{ data = await res.json(); }catch{}
+  if(!res.ok) throw new Error(data.error || ('HTTP '+res.status));
+  return data;
+}
+const STAT_FIELDS = {
+  RB:['rush_att','rush_yds','rush_td','rec','rec_yds','rec_td'],
+  WR:['rec','rec_yds','rec_td'], TE:['rec','rec_yds','rec_td'],
+  QB:['pass_yds','pass_td','pass_int','rush_yds','rush_td'],
+  DB:['tackles','int','pbu'], LB:['tackles','tfl','sacks'], DL:['tackles','tfl','sacks'],
+};
+
+function Admin({settings, entrants, live, onDone}){
+  const [key, setKey] = useState("");
+  const [msg, setMsg] = useState(null);
+  const [kval, setKval] = useState(settings ? settings.k : 150);
+  const [statPlayer, setStatPlayer] = useState("");
+  const [statVals, setStatVals] = useState({});
+  const [busy, setBusy] = useState(false);
+
+  function flash(t,m){ setMsg({t,m}); }
+  async function run(action, extra){
+    if(!key) return flash("err","Enter your admin key first.");
+    setBusy(true);
+    try{ const r = await callAdmin(key, action, extra); flash("ok", r.message || "Done."); onDone(); }
+    catch(ex){ flash("err", ex.message); }
+    setBusy(false);
+  }
+
+  const chosen = statPlayer ? BY_ID[statPlayer] : null;
+  const fields = chosen ? STAT_FIELDS[chosen.pos] : [];
+
+  function loadCurrent(id){
+    setStatPlayer(id);
+    const cur = live[id] || {};
+    const v = {}; (STAT_FIELDS[(BY_ID[id]||{}).pos]||[]).forEach(f=> v[f] = cur[f] ?? "");
+    setStatVals(v);
+  }
+  async function saveStats(){
+    if(!chosen) return flash("err","Pick a player.");
+    const row = { player_id: chosen.id };
+    fields.forEach(f => { if(statVals[f] !== "" && statVals[f] !== undefined) row[f] = statVals[f]; });
+    await run('update_stats', { stats:[row] });
+  }
+
+  return <div className="card">
+    <h2>Admin</h2>
+    <p className="hint">Enter your ADMIN_KEY to unlock actions. It's checked server-side and never stored.</p>
+    {msg && <div className={"banner "+(msg.t==="ok"?"ok":"err")}>{msg.m}</div>}
+    <label>Admin key</label>
+    <input type="password" value={key} onChange={e=>setKey(e.target.value)} placeholder="your secret admin key" />
+
+    <details className="adm" open>
+      <summary style={{cursor:"pointer",margin:"14px 0 6px",fontWeight:600}}>Submissions</summary>
+      <p className="lock-state muted">Currently: <b>{settings && settings.submissions_locked ? "LOCKED" : "OPEN"}</b> · {entrants.length} entries</p>
+      <div className="row">
+        <button className="btn" disabled={busy} onClick={()=>{ if(confirm("Lock submissions and REVEAL all picks? Entrants can no longer submit.")) run('lock'); }}>Lock &amp; reveal picks</button>
+        <button className="btn sec" disabled={busy} onClick={()=>run('unlock')}>Re-open (hide again)</button>
+      </div>
+    </details>
+
+    <details className="adm">
+      <summary style={{cursor:"pointer",margin:"14px 0 6px",fontWeight:600}}>Smoothing constant k</summary>
+      <div className="row">
+        <div style={{flex:"1 1 120px"}}>
+          <input type="number" value={kval} onChange={e=>setKval(e.target.value)} />
+        </div>
+        <button className="btn" disabled={busy} onClick={()=>run('set_k',{k:Number(kval)})}>Set k</button>
+      </div>
+    </details>
+
+    <details className="adm">
+      <summary style={{cursor:"pointer",margin:"14px 0 6px",fontWeight:600}}>Enter / update 2026 stats</summary>
+      <label>Player</label>
+      <select value={statPlayer} onChange={e=>loadCurrent(e.target.value)}>
+        <option value="">— choose player —</option>
+        <optgroup label="Offense">{OFFENSE.map(p=><option key={p.id} value={p.id}>{p.name} ({p.pos})</option>)}</optgroup>
+        <optgroup label="Defense">{DEFENSE.map(p=><option key={p.id} value={p.id}>{p.name} ({p.pos})</option>)}</optgroup>
+      </select>
+      {chosen && <div style={{marginTop:12}}>
+        <p className="hint">Cumulative season totals for {chosen.name}. Leave a field blank to keep it at 0.</p>
+        <div className="statgrid">
+          {fields.map(f=><div key={f}>
+            <label style={{margin:"0 0 4px"}}>{f}</label>
+            <input type="number" value={statVals[f] ?? ""} onChange={e=>setStatVals({...statVals,[f]:e.target.value})} />
+          </div>)}
+        </div>
+        <div style={{marginTop:12}}><button className="btn" disabled={busy} onClick={saveStats}>Save {chosen.name}'s stats</button></div>
+      </div>}
+    </details>
+
+    <details className="adm">
+      <summary style={{cursor:"pointer",margin:"14px 0 6px",fontWeight:600}}>Manage entries</summary>
+      {!entrants.length && <p className="muted">No entries yet.</p>}
+      {!!entrants.length && <table><thead><tr><th>Entrant</th><th></th></tr></thead><tbody>
+        {entrants.map(e=><tr key={e.id}>
+          <td>{e.entrant_name}</td>
+          <td style={{textAlign:"right"}}>
+            <button className="btn danger" style={{padding:"6px 10px",fontSize:13}} disabled={busy}
+              onClick={()=>{ if(confirm("Delete "+e.entrant_name+"'s entry?")) run('delete_entry',{entry_id:e.id}); }}>Delete</button>
+          </td>
+        </tr>)}
+      </tbody></table>}
+    </details>
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+
+<script>
+  // Transform the JSX above with the CLASSIC runtime (uses React.createElement,
+  // so no ES-module import is injected) and run it. If a CDN library failed to
+  // load, show a clear message instead of a blank page.
+  (function(){
+    try{
+      if(typeof Babel === "undefined") throw new Error("Babel failed to load (check your internet / CDN access).");
+      if(typeof React === "undefined" || typeof ReactDOM === "undefined") throw new Error("React failed to load from CDN.");
+      var src = document.getElementById("ptc-src").textContent;
+      var out = Babel.transform(src, { presets: [["react", { runtime: "classic" }]] }).code;
+      (0, eval)(out);
+    }catch(e){
+      document.getElementById("root").innerHTML =
+        '<div class="wrap"><div class="banner err"><b>App failed to start.</b> ' +
+        (e && e.message ? e.message : e) + '</div></div>';
+      console.error(e);
+    }
+  })();
+</script>
+</body>
+</html>
